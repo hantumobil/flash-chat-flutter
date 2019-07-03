@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 final _firestore = Firestore.instance;
+FirebaseUser loggedInUser;
 
 class ChatScreen extends StatefulWidget {
   static const String id = 'chat_screen';
@@ -16,7 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final messageTextController = new TextEditingController();
   final _auth = FirebaseAuth.instance;
   final _firestore = Firestore.instance;
-  FirebaseUser loggedInUser;
+
   String messageText;
 
   void getCurrentUser() async {
@@ -121,15 +122,17 @@ class _ChatScreenState extends State<ChatScreen> {
 class MessageBubble extends StatelessWidget {
   final String text;
   final String sender;
+  final bool isMe;
 
-  MessageBubble({this.text, this.sender});
+  MessageBubble({this.text, this.sender, this.isMe});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.all(10.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             sender,
@@ -142,9 +145,19 @@ class MessageBubble extends StatelessWidget {
             height: 5.0,
           ),
           Material(
-            borderRadius: BorderRadius.circular(30.0),
+            borderRadius: isMe
+                ? BorderRadius.only(
+                    topLeft: Radius.circular(30.0),
+                    bottomLeft: Radius.circular(30.0),
+                    bottomRight: Radius.circular(30.0),
+                  )
+                : BorderRadius.only(
+                    topRight: Radius.circular(30.0),
+                    bottomLeft: Radius.circular(30.0),
+                    bottomRight: Radius.circular(30.0),
+                  ),
             elevation: 5.0,
-            color: Colors.blue,
+            color: isMe ? Colors.blue : Colors.blueGrey,
             child: Padding(
               padding: EdgeInsets.all(15.0),
               child: Text(
@@ -179,15 +192,18 @@ class MessagesStream extends StatelessWidget {
         }
         final messages = snapshot.data.documents;
 
-        List<MessageBubble> messageWidgets = [];
+        List<MessageBubble> messageBubbles = [];
         for (var message in messages) {
           final messageText = message.data['text'];
           final messageSender = message.data['sender'];
+
           final MessageBubble messageBubble = MessageBubble(
             text: messageText,
             sender: messageSender,
+            isMe: messageSender == loggedInUser.email,
           );
-          messageWidgets.add(messageBubble);
+
+          messageBubbles.add(messageBubble);
         }
 
         return Expanded(
@@ -196,7 +212,7 @@ class MessagesStream extends StatelessWidget {
               horizontal: 10.0,
               vertical: 20.0,
             ),
-            children: messageWidgets,
+            children: messageBubbles,
           ),
         );
       },
